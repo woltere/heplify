@@ -14,6 +14,8 @@ github.com/negbie/freecache v1.1.0 h1:21vPkO0aFvrSlh0j37cwXlIe3swtjYi3xt+InoxjOt
 github.com/negbie/freecache v1.1.0/go.mod h1:Tu27l8sYK6JgwergLHD7u8lRw1or1T4MeXvV6R+hwQs=
 github.com/negbie/logp v0.0.0-20190313141056-04cebff7f846 h1:PAr5hcOgvc2m71W4SlbUsAbUnea5lNjB5/DfIHW9f8Q=
 github.com/negbie/logp v0.0.0-20190313141056-04cebff7f846/go.mod h1:xTKf9aKLuVL0r9wxWouR+/4ctK2ywm0rTPFY2klrnOg=
+github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
+github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/segmentio/encoding v0.1.15 h1:btgfyAuFo3uLw7eOrRDPo8H4Bc881+bSPHzAEe0ukho=

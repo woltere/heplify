@@ -8,6 +8,7 @@ require (
 	github.com/google/gopacket v1.1.18
 	github.com/negbie/freecache v1.1.0
 	github.com/negbie/logp v0.0.0-20190313141056-04cebff7f846
+	github.com/pkg/errors v0.9.1
 	github.com/segmentio/encoding v0.1.15
 	github.com/stretchr/testify v1.6.1
 	golang.org/x/net v0.0.0-20200822124328-c89045814202

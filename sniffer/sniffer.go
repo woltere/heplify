@@ -3,8 +3,10 @@ package sniffer
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/binary"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -17,6 +19,7 @@ import (
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
 	"github.com/negbie/logp"
+	"github.com/pkg/errors"
 	"github.com/sipcapture/heplify/config"
 	"github.com/sipcapture/heplify/decoder"
 	"github.com/sipcapture/heplify/dump"
@@ -35,6 +38,7 @@ type SnifferSetup struct {
 	filter         []string
 	discard        []string
 	worker         Worker
+	vxlanHandle    *vxlanSniffer
 	DataSource     gopacket.PacketDataSource
 }
 
@@ -72,6 +76,48 @@ func (mw *MainWorker) OnPacket(data []byte, ci *gopacket.CaptureInfo) {
 	mw.decoder.Process(data, ci)
 }
 
+type vxlanSniffer struct {
+	snaplen int
+	sock    net.PacketConn
+}
+
+type vxlanHeader struct {
+	Flag               uint16
+	GroupPolicyID      uint16
+	NetworkIndentifier [3]byte
+	Reserved           [1]byte
+}
+
+func (s *vxlanSniffer) ReadPacketData() (data []byte, ci gopacket.CaptureInfo, err error) {
+	const vxlanHeaderLength = 8
+	buf := make([]byte, s.snaplen)
+	var length int
+	for length < vxlanHeaderLength {
+		length, _, err = s.sock.ReadFrom(buf)
+		if err != nil {
+			return
+		}
+		if length < vxlanHeaderLength {
+			logp.Warn("Too short data for VXLAN header: %d", length)
+			continue
+		}
+	}
+	var header vxlanHeader
+	gopkt := gopacket.NewPacket(buf[vxlanHeaderLength:length], layers.LayerTypeEthernet, gopacket.Lazy)
+	buffer := bytes.NewBuffer(buf)
+	if err = binary.Read(buffer, binary.BigEndian, &header); err != nil {
+		err = errors.Wrap(err, "Fail to parse VXLAN header")
+		return
+	}
+	data = gopkt.Data()
+	ci = gopkt.Metadata().CaptureInfo
+	return
+}
+
+func (s *vxlanSniffer) Close() error {
+	return s.sock.Close()
+}
+
 func (sniffer *SnifferSetup) setFromConfig() error {
 	var err error
 
@@ -79,7 +125,7 @@ func (sniffer *SnifferSetup) setFromConfig() error {
 		sniffer.config.Snaplen = 65535
 	}
 
-	if sniffer.config.Type != "af_packet" {
+	if sniffer.config.Type != "af_packet" && sniffer.config.Type != "vxlan" {
 		sniffer.config.Type = "pcap"
 	}
 
@@ -123,6 +169,18 @@ func (sniffer *SnifferSetup) setFromConfig() error {
 	logp.Info("ostype: %s, osarch: %s", runtime.GOOS, runtime.GOARCH)
 
 	switch sniffer.config.Type {
+	case "vxlan":
+		datasource := vxlanSniffer{
+			snaplen: sniffer.config.Snaplen,
+		}
+		datasource.sock, err = net.ListenPacket("udp", fmt.Sprintf(":%d", sniffer.config.VxlanPort))
+		if err != nil {
+			// TODO wrap error
+			return err
+		}
+
+		sniffer.vxlanHandle = &datasource
+		sniffer.DataSource = &datasource
 	case "pcap":
 		if sniffer.file != "" {
 			if strings.HasSuffix(strings.ToLower(sniffer.file), ".gz") {
@@ -194,14 +252,14 @@ func New(mode string, cfg *config.InterfacesConfig) (*SnifferSetup, error) {
 	sniffer.mode = mode
 	sniffer.file = sniffer.config.ReadFile
 
-	if sniffer.file == "" {
+	if sniffer.file == "" && sniffer.config.Type != "vxlan" {
 		if sniffer.config.Device == "any" && (runtime.GOOS == "windows" || runtime.GOOS == "darwin") {
 			_, err := ListDeviceNames(true, false)
 			return nil, fmt.Errorf("%v -i any is not supported on %s\nPlease use one of the above devices", err, runtime.GOOS)
 		}
 	}
 
-	if sniffer.config.Device == "" && sniffer.file == "" {
+	if sniffer.config.Device == "" && sniffer.file == "" && sniffer.config.Type != "vxlan" {
 		_, err := ListDeviceNames(true, false)
 		return nil, fmt.Errorf("%v Please use one of the above devices", err)
 	}
@@ -324,6 +382,8 @@ func (sniffer *SnifferSetup) Close() error {
 		sniffer.pcapHandle.Close()
 	case "af_packet":
 		sniffer.afpacketHandle.Close()
+	case "vxcap":
+		sniffer.vxlanHandle.Close()
 	}
 	return nil
 }

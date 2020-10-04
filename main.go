@@ -32,7 +32,7 @@ func createFlags() {
 	)
 
 	flag.StringVar(&ifaceConfig.Device, "i", "any", "Listen on interface")
-	flag.StringVar(&ifaceConfig.Type, "t", "pcap", "Capture types are [pcap, af_packet]")
+	flag.StringVar(&ifaceConfig.Type, "t", "pcap", "Capture types are [pcap, af_packet, vxlan]")
 	flag.UintVar(&ifaceConfig.FanoutID, "fg", 0, "Fanout group ID for af_packet")
 	flag.IntVar(&ifaceConfig.FanoutWorker, "fw", 4, "Fanout worker count for af_packet")
 	flag.StringVar(&ifaceConfig.ReadFile, "rf", "", "Read pcap file")
@@ -68,6 +68,7 @@ func createFlags() {
 	flag.BoolVar(&config.Cfg.Reassembly, "tcpassembly", false, "If true, tcpassembly will be enabled")
 	flag.UintVar(&config.Cfg.SendRetries, "tcpsendretries", 64, "Number of retries for sending before giving up and reconnecting")
 	flag.BoolVar(&config.Cfg.Version, "version", false, "Show heplify version")
+	flag.UintVar(&ifaceConfig.VxlanPort, "vxlan", 4789, "Port to to capure vxlan packets from")
 	flag.Parse()
 
 	config.Cfg.Iface = &ifaceConfig
